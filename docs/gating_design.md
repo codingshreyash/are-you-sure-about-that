@@ -55,3 +55,14 @@ Cost: about 2 x 1,200 + (own-right items without a re-ask) calls per model.
 - Items are real questions but MedQA and CommonsenseQA are not advice. CommonsenseQA has label noise.
 - The oracle row is an upper bound only.
 - Six models, one question family. No claim beyond it.
+
+---
+## Amendment A (2026-11-23, written before the local run; nothing in this amendment has run)
+The Inference Hub key is not available, so the hub run cannot start. We add a **local version** of the same test on a rented A100:
+- **Models:** Gemma 2 9B IT, Llama 3.1 8B Instruct (open copy `NousResearch/Meta-Llama-3.1-8B-Instruct`), Mistral 7B Instruct v0.3. Haiku 5.5, GPT-5.4 Mini and Gemma 4 31B are not part of the local run. The hub run stays open if a key appears.
+- **Everything is generated locally** with Hugging Face `generate`: three independent turn-1 samples `a1, a2, a3` per item, then one look_again re-ask of `a1` (using `a1`'s own text). The old hub answers are **not** reused, so all four calls come from the same model copy.
+- **Sampling:** `do_sample=True` with each model's own default generation settings (temperature and top-p from its `generation_config`), up to 400 new tokens. This is not the same as hub default sampling. Results can differ from the hub runs.
+- **Parsing:** the last `choice_a` to `choice_e` in the reply. Items with an unparsed reply in any of the four calls are dropped and counted.
+- **Items:** all 1,200 real questions (MedQA 600, CommonsenseQA 600), same option order and seed as before.
+- **Policies, metrics, predictions, and the verdict rule stay as written above.** P2 is revised for the local run: Mistral's local sampling may vary more than the hub's, so `unsure` may fire more often. We state the share of unsure items for each model, and the "uninformative" rule applies.
+- **Extra caution:** local Llama behaves differently from hub Llama (docs/interp_results.md). The local Llama result is about the local copy only.
