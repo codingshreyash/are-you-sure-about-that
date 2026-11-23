@@ -7,7 +7,7 @@ import os, sys, numpy as np
 from scipy.stats import rankdata
 d = np.load(sys.argv[1], allow_pickle=True); K = int(sys.argv[2]) if len(sys.argv) > 2 else 8
 L = "abcde"; right = np.array([str(c)[-1] for c in d["right_code"]]); ownc = d["own_correct"].astype(bool)
-ok = np.array([L[i] for i in d["probs_look_again"].argmax(1)]) == right
+ok = d["gen_ok_look_again"] if "gen_ok_look_again" in d.files else np.array([L[i] for i in d["probs_look_again"].argmax(1)]) == right
 la, ne = d["attn_look_again"][:, :, 1, :], d["attn_neutral"][:, :, 1, :]   # own_answer span: items x layers x heads
 idx = np.where(~ownc if os.environ.get('GROUP') == 'wrong' else ownc)[0]; y_all = (~ok)[idx].astype(int)
 def auc(x, y):
