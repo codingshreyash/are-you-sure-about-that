@@ -30,3 +30,15 @@ baselines  forced-right rate: broken-group neutral 0.93, look_again 0.00 | kept-
   top16                        break rate 0.06 [0.00,0.12]
   all_24_36                    break rate 0.24 [0.12,0.36]
   rand8_layers_0               break rate 0.04
+
+== OWN-WRONG items split by the look_again outcome: recovered n=45, stuck n=55
+  recovered  look_again <- neutral heads, top8       forced-right 0.98 [0.93,1.00]
+  recovered  look_again <- neutral heads, top16      forced-right 0.60 [0.47,0.73]
+  recovered  look_again <- neutral heads, all_24_36  forced-right 0.20 [0.09,0.33]
+  stuck      look_again <- neutral heads, top8       forced-right 0.04 [0.00,0.09]
+  stuck      look_again <- neutral heads, top16      forced-right 0.00 [0.00,0.00]
+  stuck      look_again <- neutral heads, all_24_36  forced-right 0.00 [0.00,0.00]
+== INDUCED RECOVERY: neutral <- look_again heads, own-wrong items (neutral baseline forced-right 0.09)
+  top8                         forced-right 0.09 [0.04,0.15]
+  top16                        forced-right 0.11 [0.05,0.17]
+  all_24_36                    forced-right 0.40 [0.31,0.50]

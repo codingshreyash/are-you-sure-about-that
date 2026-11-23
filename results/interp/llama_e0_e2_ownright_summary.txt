@@ -1,0 +1,78 @@
+items 552; own-right 97; own-wrong 455
+
+== E0 gate: forced-answer behavior (local) vs API run ==
+own-right: share WRONG after re-ask (break)        neutral    local 0.12 [0.06,0.20]   api 0.03  n=97
+own-right: share WRONG after re-ask (break)        look_again local 0.57 [0.47,0.66]   api 0.10  n=97
+own-wrong: share RIGHT after re-ask (recovery)     neutral    local 0.21 [0.18,0.25]   api 0.07  n=455
+own-wrong: share RIGHT after re-ask (recovery)     look_again local 0.40 [0.36,0.45]   api 0.18  n=455
+GATE (break rate look_again >= 0.20 and >= 2x neutral): PASS  (look_again 0.57, neutral 0.12)
+local forced vs API final answer agree (right/wrong): 0.70
+
+group right, local look_again: good outcome 42, bad outcome 55
+
+== E2: attention mass (last position -> span), mean over heads' items ==
+neutral {'question': 0.0994, 'own_answer': 0.0722, 'reask': 0.0089}
+look_again {'question': 0.1056, 'own_answer': 0.0648, 'reask': 0.0126}
+
+-- span 'own_answer': head effect = mean over own-right items of (broken - kept) in look_again attention; top 12 heads by |t|
+   L25H12  broken 0.0306  kept 0.1170  t -6.38  perm p 0.002
+   L23H05  broken 0.0402  kept 0.0690  t -4.93  perm p 0.002
+   L14H16  broken 0.0967  kept 0.1185  t -4.37  perm p 0.002
+   L23H24  broken 0.0532  kept 0.0447  t +3.92  perm p 0.002
+   L26H14  broken 0.0328  kept 0.0460  t -3.79  perm p 0.002
+   L28H12  broken 0.0295  kept 0.0383  t -3.75  perm p 0.002
+   L28H13  broken 0.0798  kept 0.0587  t +3.74  perm p 0.002
+   L24H22  broken 0.1064  kept 0.0382  t +3.70  perm p 0.006
+   L27H22  broken 0.1152  kept 0.1517  t -3.46  perm p 0.002
+   L08H03  broken 0.1998  kept 0.1603  t +3.37  perm p 0.002
+   L28H14  broken 0.0378  kept 0.0322  t +3.19  perm p 0.006
+   L10H08  broken 0.0603  kept 0.0539  t +3.19  perm p 0.004
+   look_again - neutral (all items), top 8 heads by mean difference
+   L14H05  la 0.3333  neutral 0.4721  diff -0.1387
+   L13H18  la 0.2884  neutral 0.4097  diff -0.1213
+   L24H27  la 0.1192  neutral 0.2330  diff -0.1139
+   L13H21  la 0.3221  neutral 0.4330  diff -0.1109
+   L19H03  la 0.1147  neutral 0.2231  diff -0.1083
+   L14H13  la 0.1698  neutral 0.2739  diff -0.1041
+   L14H31  la 0.2000  neutral 0.3027  diff -0.1027
+   L14H20  la 0.1917  neutral 0.2887  diff -0.0970
+
+-- span 'reask': head effect = mean over own-right items of (broken - kept) in look_again attention; top 12 heads by |t|
+   L10H01  broken 0.0009  kept 0.0007  t +3.45  perm p 0.002
+   L19H27  broken 0.0036  kept 0.0044  t -3.17  perm p 0.002
+   L07H25  broken 0.0003  kept 0.0002  t +2.89  perm p 0.008
+   L24H22  broken 0.0004  kept 0.0007  t -2.87  perm p 0.004
+   L06H07  broken 0.0047  kept 0.0059  t -2.86  perm p 0.006
+   L15H15  broken 0.0054  kept 0.0068  t -2.82  perm p 0.004
+   L29H13  broken 0.0008  kept 0.0009  t -2.77  perm p 0.002
+   L18H18  broken 0.0097  kept 0.0120  t -2.73  perm p 0.002
+   L10H08  broken 0.0177  kept 0.0161  t +2.64  perm p 0.010
+   L16H12  broken 0.0068  kept 0.0056  t +2.61  perm p 0.014
+   L10H09  broken 0.0150  kept 0.0127  t +2.59  perm p 0.024
+   L23H11  broken 0.0009  kept 0.0010  t -2.57  perm p 0.014
+   look_again - neutral (all items), top 8 heads by mean difference
+   L13H23  la 0.2154  neutral 0.0870  diff +0.1284
+   L13H22  la 0.1908  neutral 0.0966  diff +0.0943
+   L07H16  la 0.1263  neutral 0.0579  diff +0.0684
+   L10H26  la 0.1597  neutral 0.1045  diff +0.0552
+   L12H15  la 0.1399  neutral 0.0909  diff +0.0491
+   L11H09  la 0.1139  neutral 0.0671  diff +0.0468
+   L14H02  la 0.0489  neutral 0.0046  diff +0.0443
+   L07H13  la 0.1102  neutral 0.0670  diff +0.0432
+
+== E1-lite: 5-fold CV AUC, residual at last position -> broken vs kept (own-right items) ==
+neutral L0:0.49 L2:0.54 L4:0.63 L6:0.67 L8:0.72 L10:0.65 L12:0.59 L14:0.59 L16:0.69 L18:0.73 L20:0.77 L22:0.77 L24:0.82 L26:0.85 L28:0.86 L30:0.85 L32:0.85 (n=97, broken=55)
+look_again L0:0.49 L2:0.57 L4:0.68 L6:0.66 L8:0.71 L10:0.64 L12:0.57 L14:0.62 L16:0.62 L18:0.62 L20:0.67 L22:0.65 L24:0.68 L26:0.68 L28:0.70 L30:0.68 L32:0.68 (n=97, broken=55)
+
+== Direction: mean(look_again - neutral) per layer; projection, broken vs kept (own-right items) ==
+L00  broken      0.00  kept      0.00  diff    +0.00  norm of mean shift 0.0
+L03  broken      0.05  kept      0.05  diff    -0.00  norm of mean shift 0.0
+L06  broken     -0.14  kept     -0.18  diff    +0.04  norm of mean shift 0.1
+L09  broken      0.37  kept      0.38  diff    -0.01  norm of mean shift 0.4
+L12  broken     -0.34  kept     -0.31  diff    -0.03  norm of mean shift 0.7
+L15  broken      0.52  kept      0.23  diff    +0.29  norm of mean shift 1.4
+L18  broken     -0.25  kept     -0.62  diff    +0.37  norm of mean shift 2.1
+L21  broken     -0.52  kept     -0.94  diff    +0.43  norm of mean shift 2.4
+L24  broken      3.68  kept      3.18  diff    +0.50  norm of mean shift 3.2
+L27  broken      2.11  kept      1.34  diff    +0.76  norm of mean shift 4.6
+L30  broken      4.01  kept      2.74  diff    +1.26  norm of mean shift 7.0
