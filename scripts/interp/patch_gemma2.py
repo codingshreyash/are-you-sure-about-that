@@ -3,22 +3,23 @@ Intervention: at the LAST position only, replace the per-head attention output (
 from the other wording's run on the same item.
   look_again <- neutral : does it bring back the right answer (broken items) and keep kept items kept?
   neutral <- look_again : does it induce breaks on own-right items?
-Conditions: top8 / top16 (selected heads), rand8_layers (8 random heads from layers 24-36, 10 draws), rand8_any (10 draws),
-all_24_36 (every head in layers 24-36). Also runs on own-wrong items (selectivity cost).
-Usage: python3 scripts/interp/patch_gemma2.py pairs.jsonl heads.json OUT.json
+Conditions: top8 / top16 (selected heads), rand8_layers (8 random heads from the late layers, 10 draws), rand8_any (10 draws),
+all_late (every head in the late layers). Also runs on own-wrong items (selectivity cost).
+Usage: python3 scripts/interp/patch_gemma2.py pairs.jsonl heads.json OUT.json [--model HF_ID --late-start 24 --late-end 36]
 """
 import argparse, json, random
 import numpy as np, torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 MODEL, LETTERS = "google/gemma-2-9b-it", "abcde"
-NL, NH, HD = 42, 16, 256
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("pairs"); ap.add_argument("heads"); ap.add_argument("out"); ap.add_argument("--limit", type=int)
+    ap = argparse.ArgumentParser(); ap.add_argument("pairs"); ap.add_argument("heads"); ap.add_argument("out"); ap.add_argument("--limit", type=int); ap.add_argument("--model", default=MODEL)
+    ap.add_argument("--late-start", type=int, default=24); ap.add_argument("--late-end", type=int, default=36)   # inclusive; Gemma 24-36 of 42 layers; Llama use 18-27 of 32 (same fractions)
     a = ap.parse_args()
     H = json.load(open(a.heads)); heads16 = [tuple(x) for x in H["heads"]]; top = {"top8": heads16[:8], "top16": heads16}
-    tok = AutoTokenizer.from_pretrained(MODEL)
-    model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, attn_implementation="eager").cuda().eval()
+    tok = AutoTokenizer.from_pretrained(a.model)
+    model = AutoModelForCausalLM.from_pretrained(a.model, dtype=torch.bfloat16, attn_implementation="eager").cuda().eval()
+    cfg = model.config; NL, NH = cfg.num_hidden_layers, cfg.num_attention_heads; HD = getattr(cfg, "head_dim", None) or cfg.hidden_size // NH
     lid = [tok(l, add_special_tokens=False)["input_ids"][-1] for l in LETTERS]
     state = {"mode": None, "cache": {}, "patch": {}}          # mode: None | "cache" | "patch"
     def make_hook(layer):
@@ -43,10 +44,10 @@ def main():
         for l, h in hs: out.setdefault(l, []).append(h)
         return out
     rng = random.Random(1684)
-    layer_pool = [(l, h) for l in range(24, 37) for h in range(NH)]; any_pool = [(l, h) for l in range(NL) for h in range(NH)]
+    layer_pool = [(l, h) for l in range(a.late_start, a.late_end + 1) for h in range(NH)]; any_pool = [(l, h) for l in range(NL) for h in range(NH)]
     conds = dict(top)
     for i in range(10): conds[f"rand8_layers_{i}"] = rng.sample(layer_pool, 8); conds[f"rand8_any_{i}"] = rng.sample(any_pool, 8)
-    conds["all_24_36"] = layer_pool
+    conds["all_late"] = layer_pool
     items = [json.loads(l) for l in open(a.pairs) if l.strip()]
     keep = set(H["test_own_right_keys"]) | set(H["own_wrong_keys"])
     items = [it for it in items if it["key"] in keep and "messages_look_again" in it and "messages_neutral" in it][: a.limit]
@@ -60,7 +61,7 @@ def main():
              "base_neutral": run(ids["neutral"]).tolist(), "base_look_again": run(ids["look_again"]).tolist(), "la_patched": {}, "n_patched": {}}
         for c, hs in conds.items():
             r["la_patched"][c] = run(ids["look_again"], "patch", as_patch(hs), caches["neutral"]).tolist()        # neutral heads into look_again
-            if c in ("top8", "top16") or c.endswith("_0") or c == "all_24_36":
+            if c in ("top8", "top16") or c.endswith("_0") or c == "all_late":
                 r["n_patched"][c] = run(ids["neutral"], "patch", as_patch(hs), caches["look_again"]).tolist()    # look_again heads into neutral
         res.append(r)
         if n % 20 == 0: print(n, len(items), flush=True)

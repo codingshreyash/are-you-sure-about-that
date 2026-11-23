@@ -1,15 +1,15 @@
 """Held-out check for the own-answer attention heads (E2). Pick top-K heads by |t| (broken vs kept, look_again attention to the
 model's own answer) on a random half of the own-right items; score the other half with the mean attention of those heads.
 Repeat 200 random splits. Reports mean held-out AUC (lower attention = broken). Also the same score on own-wrong items:
-does a larger attention drop go with recovery? Usage: python3 scripts/interp/heldout_heads.py OUT.npz [K=8]
+does a larger attention drop go with recovery? Usage: [GROUP=wrong] python3 scripts/interp/heldout_heads.py OUT.npz [K=8]
 """
-import sys, numpy as np
+import os, sys, numpy as np
 from scipy.stats import rankdata
 d = np.load(sys.argv[1], allow_pickle=True); K = int(sys.argv[2]) if len(sys.argv) > 2 else 8
 L = "abcde"; right = np.array([str(c)[-1] for c in d["right_code"]]); ownc = d["own_correct"].astype(bool)
 ok = np.array([L[i] for i in d["probs_look_again"].argmax(1)]) == right
 la, ne = d["attn_look_again"][:, :, 1, :], d["attn_neutral"][:, :, 1, :]   # own_answer span: items x layers x heads
-idx = np.where(ownc)[0]; y_all = (~ok)[idx].astype(int)
+idx = np.where(~ownc if os.environ.get('GROUP') == 'wrong' else ownc)[0]; y_all = (~ok)[idx].astype(int)
 def auc(x, y):
     r = rankdata(x); n1 = y.sum(); n0 = len(y) - n1
     return (r[y == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)

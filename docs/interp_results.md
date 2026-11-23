@@ -51,6 +51,28 @@ What this says:
 - **The same components carry the useful and the harmful change.** The patch that undoes the breaks also removes real recoveries (0.45 to 0.09 for all heads, 0.45 to 0.27 for the top 16). This matches the Ma et al. warning that "do not yield" and "update when wrong" share components. We have no head set that keeps the fixes and removes the breaks.
 - **Late-layer head outputs are not the whole story.** Swapping them into the neutral run causes breaks in 24% of right answers. The full look_again run breaks 27% (E0), so this swap gives most but not all of the effect. Earlier layers and earlier positions may also matter. We patched the last position only.
 
+### E3 addition: the late layers also drive real recoveries (own-wrong items, n=100)
+- Items fixed by look_again (n=45): patching neutral heads from all late layers (24 to 36) into the look_again run leaves **0.20** of them right. The top 16 heads leave 0.60 right. The top 8 leave 0.98 right.
+- Items still wrong after look_again (n=55): no patch fixes them (0.00 to 0.04).
+- Reverse patch (look_again heads into the neutral run): recoveries rise from 0.09 to **0.40** with all late-layer heads. The top 8 and top 16 heads give 0.09 and 0.11.
+- So the late-layer attention outputs at the last position are close to **necessary and partly sufficient** for the look_again effect, both for the harmful change (breaks) and for the useful one (fixes).
+
+## Llama 3.1 8B Instruct: replication attempt (not valid for conclusions)
+Same method as Gemma (E0 and E2). E3 was **not run**. The weights are the open copy `NousResearch/Meta-Llama-3.1-8B-Instruct`, because our token has no access to the official gated repo. The file sizes match the official shards, and we did not check the weights further.
+
+**The forced-answer metric does not fit Llama.** Llama writes its reasoning first and gives the code on the last line. In the API run only 5 of 576 look_again replies start with `choice_`. Forcing `choice_` as the first tokens makes it commit before it reasons.
+- Own-right items turned wrong under look_again: local forced **0.57**, API run **0.10**. Neutral: 0.12 against 0.03.
+- Own-wrong items turned right under look_again: local 0.40, API 0.18.
+- Local and API final answers agree on right or wrong for only 70% of items (Gemma: 83%).
+- The E0 gate as written (at least 0.20 and at least 2 times neutral) passes on paper, but the local numbers do not track the API run. We treat the Llama run as failing the spirit of the gate.
+
+What the numbers show, for the record, with that caveat (own-wrong items: still wrong vs fixed; n=455):
+- Late-layer attention to the model's own answer drops under look_again in both models (Gemma 0.112 to 0.086, Llama 0.048 to 0.040). The drop is about three times smaller in Llama.
+- The head effects between stuck and fixed items are small and of mixed sign (for example L25H12 0.080 against 0.042). A probe on the last-position residual separates them with a cross-validated AUC of about 0.72, against 0.88 for Gemma.
+- **We cannot say if Llama anchoring uses the same late layers.** To test it, we need a metric from real generated answers (generate locally, parse the final code, and read the model state at the position where it writes the code).
+
+Files: `results/interp/llama_e0_e2_ownright_summary.txt`, `results/interp/llama_e0_e2_ownwrong_summary.txt`, `data/interp/llama31_8b_pairs.jsonl`.
+
 ## What these results do not show
 - **E2 and E1-lite are correlations.** E3 is causal only for the last-position head outputs we patched. It has 15 broken items, so the intervals are wide.
 - **One model and one question set.** Llama and Mistral (anchoring) have not run.
@@ -61,5 +83,5 @@ What this says:
 
 ## Next
 1. Find which layers and which positions matter: patch by layer block, and patch the re-ask span, not only the last position.
-2. Repeat E0 to E2 for Llama 3.1 8B (anchoring) and Mistral 7B.
+2. Redo Llama 3.1 8B and Mistral 7B with a metric from real generated answers (see the Llama section), then run E3 on them.
 3. Try a second wording ("review").

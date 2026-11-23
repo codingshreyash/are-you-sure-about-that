@@ -5,9 +5,10 @@ E2: per layer and head, attention mass from the last position to the re-ask sent
 E1-lite: cross-validated logistic probe on the last-position residual per layer: can it tell broken from kept (own-right items)?
 Direction: mean(look_again - neutral) per layer; its projection for broken vs kept.
 All intervals: 2000 bootstrap resamples over items, seed 1684. Heads: reported with a permutation p, uncorrected, for ranking only.
-Usage: python3 scripts/interp/analyze_e0_e2.py OUT.npz > summary.txt
+Usage: [GROUP=wrong] python3 scripts/interp/analyze_e0_e2.py OUT.npz > summary.txt
+GROUP=right (default): own-right items; positive = broken. GROUP=wrong: own-wrong items; positive = stuck (still wrong after look_again).
 """
-import sys, numpy as np
+import os, sys, numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.metrics import roc_auc_score
@@ -40,8 +41,9 @@ agree = np.mean([(ok[w][i] == (api[w][i] in ("kept", "recovered"))) for w in top
 print(f"local forced vs API final answer agree (right/wrong): {agree:.2f}")
 
 # groups among own-right items, by the local forced outcome
-kept = ownc & ok["look_again"]; broken = ownc & ~ok["look_again"]
-print(f"\nown-right, local look_again: kept {kept.sum()}, broken {broken.sum()}")
+G = ~ownc if os.environ.get("GROUP") == "wrong" else ownc
+kept = G & ok["look_again"]; broken = G & ~ok["look_again"]   # broken = bad outcome: right->wrong (GROUP=right) or wrong->still wrong (GROUP=wrong)
+print(f"\ngroup {os.environ.get('GROUP', 'right')}, local look_again: good outcome {kept.sum()}, bad outcome {broken.sum()}")
 
 print("\n== E2: attention mass (last position -> span), mean over heads' items ==")
 spans = list(d["spans"])
@@ -68,12 +70,12 @@ for si, s in enumerate(spans):
         print(f"   L{l:02d}H{h:02d}  la {a_la[:, l, si, h].mean():.4f}  neutral {a_n[:, l, si, h].mean():.4f}  diff {diff[l, h]:+.4f}")
 
 print("\n== E1-lite: 5-fold CV AUC, residual at last position -> broken vs kept (own-right items) ==")
-m = ownc & (kept | broken)
+m = kept | broken
 y = broken[m].astype(int)
 if y.sum() >= 8 and (1 - y).sum() >= 8:
     for w in ("neutral", "look_again"):
         H = d[f"hidden_{w}"][m].astype(np.float32); res = []
-        for l in range(0, H.shape[1], 3):
+        for l in range(0, H.shape[1], 2):
             pipe = make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=500))
             p = cross_val_predict(pipe, H[:, l], y, cv=StratifiedKFold(5, shuffle=True, random_state=1684), method="predict_proba")[:, 1]
             res.append((l, roc_auc_score(y, p)))

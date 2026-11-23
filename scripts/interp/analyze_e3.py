@@ -19,7 +19,7 @@ broken = [i for i in own_right if not fr(i, "base_look_again")]; kept = [i for i
 print(f"items: own-right test {len(own_right)} (broken {len(broken)}, kept {len(kept)}); own-wrong {len(own_wrong)}")
 print("baselines  forced-right rate: broken-group neutral %.2f, look_again %.2f | kept-group neutral %.2f, look_again %.2f | own-wrong neutral %.2f, look_again %.2f" % tuple(
     np.mean([fr(i, k) for i in g]) for g in (broken, kept, own_wrong) for k in ("base_neutral", "base_look_again")))
-conds = list(items[0]["la_patched"].keys())
+conds = list(items[0]["la_patched"].keys()); ALL = next(c for c in conds if c.startswith("all_"))   # all_24_36 in the first Gemma run, all_late after
 def line(name, group, c):
     m, lo, hi = boot([fr(i, "la_patched", c) for i in group]); p, plo, phi = boot([pr(i, "la_patched", c) - pr(i, "base_look_again") for i in group])
     return f"  {name:28s} forced-right {m:.2f} [{lo:.2f},{hi:.2f}]   mean change in P(right) {p:+.2f} [{plo:+.2f},{phi:+.2f}]"
@@ -27,7 +27,7 @@ for gname, g in (("BROKEN items: look_again <- neutral heads (does the right ans
                  ("KEPT items: same patch (damage check; should stay right)", kept),
                  ("OWN-WRONG items: same patch (does it remove real recoveries?)", own_wrong)):
     print("\n==", gname, f"n={len(g)}")
-    for c in ("top8", "top16", "all_24_36"):
+    for c in ("top8", "top16", ALL):
         print(line(c, g, c))
     for fam in ("rand8_layers", "rand8_any"):
         cs = [c for c in conds if c.startswith(fam)]; v = [np.mean([fr(i, "la_patched", c) for i in g]) for c in cs]
@@ -36,7 +36,16 @@ for gname, g in (("BROKEN items: look_again <- neutral heads (does the right ans
     t8 = np.mean([fr(i, "la_patched", "top8") for i in g]); rl = [np.mean([fr(i, "la_patched", c) for i in g]) for c in conds if c.startswith("rand8_layers")]
     print(f"  top8 is above {sum(t8 > r for r in rl)} of {len(rl)} random layer-matched sets in forced-right rate")
 print("\n== INDUCED BREAKS: neutral <- look_again heads, own-right test items (neutral baseline break rate %.2f)" % (1 - np.mean([fr(i, "base_neutral") for i in own_right])))
-for c in ("top8", "top16", "all_24_36"):
+for c in ("top8", "top16", ALL):
     m, lo, hi = boot([1 - fr(i, "n_patched", c) for i in own_right]); print(f"  {c:28s} break rate {m:.2f} [{lo:.2f},{hi:.2f}]")
 cs = [c for c in conds if c.startswith("rand8_layers_0")]
 for c in cs: print(f"  {c:28s} break rate {np.mean([1 - fr(i, 'n_patched', c) for i in own_right]):.2f}")
+
+rec = [i for i in own_wrong if fr(i, "base_look_again")]; stuck = [i for i in own_wrong if not fr(i, "base_look_again")]
+print(f"\n== OWN-WRONG items split by the look_again outcome: recovered n={len(rec)}, stuck n={len(stuck)}")
+for gname, g in (("recovered", rec), ("stuck", stuck)):
+    for c in ("top8", "top16", ALL):
+        m, lo, hi = boot([fr(i, "la_patched", c) for i in g]); print(f"  {gname:10s} look_again <- neutral heads, {c:10s} forced-right {m:.2f} [{lo:.2f},{hi:.2f}]")
+print("== INDUCED RECOVERY: neutral <- look_again heads, own-wrong items (neutral baseline forced-right %.2f)" % np.mean([fr(i, "base_neutral") for i in own_wrong]))
+for c in ("top8", "top16", ALL):
+    m, lo, hi = boot([fr(i, "n_patched", c) for i in own_wrong]); print(f"  {c:28s} forced-right {m:.2f} [{lo:.2f},{hi:.2f}]")

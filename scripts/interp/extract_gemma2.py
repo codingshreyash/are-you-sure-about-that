@@ -5,7 +5,7 @@ For each item and wording (neutral, look_again) from data/interp/*_pairs.jsonl:
   - answer forcing: prefill the model turn with "choice_" and read next-token probabilities over a..e (metric used in E0/E1)
   - residual stream at the last position, every layer (E1 probes, E4 direction)
   - attention mass from the last position to each span, per layer and head (E2)
-Usage: python3 scripts/interp/extract_gemma2.py data/interp/gemma2_9b_pairs.jsonl OUT.npz [--limit N]
+Usage: python3 scripts/interp/extract_gemma2.py PAIRS.jsonl OUT.npz [--limit N] [--model HF_ID]  (default google/gemma-2-9b-it; works for other chat models, e.g. Llama 3.1 8B Instruct)
 Needs: torch, transformers, a Hugging Face token with access to google/gemma-2-9b-it. Eager attention is required for attention output.
 """
 import argparse, json
@@ -24,10 +24,10 @@ def ntok(tok, text):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("pairs"); ap.add_argument("out"); ap.add_argument("--limit", type=int)
+    ap.add_argument("pairs"); ap.add_argument("out"); ap.add_argument("--limit", type=int); ap.add_argument("--model", default=MODEL)
     a = ap.parse_args()
-    tok = AutoTokenizer.from_pretrained(MODEL)
-    model = AutoModelForCausalLM.from_pretrained(MODEL, torch_dtype=torch.bfloat16, attn_implementation="eager").cuda().eval()
+    tok = AutoTokenizer.from_pretrained(a.model)
+    model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=torch.bfloat16, attn_implementation="eager").cuda().eval()
     letter_ids = [tok(f"{l}", add_special_tokens=False)["input_ids"][-1] for l in LETTERS]
     items = [json.loads(l) for l in open(a.pairs) if l.strip()]
     items = [it for it in items if all(f"messages_{w}" in it for w in WORDS)][: a.limit]
@@ -43,7 +43,9 @@ def main():
             ids = tok(full, add_special_tokens=False, return_tensors="pt").input_ids.cuda()  # template already has BOS
             q_end = ntok(tok, text_of(tok, msgs[:1]))                 # turn-1 user ends here
             a_end = ntok(tok, text_of(tok, msgs[:2]))                 # own answer ends here
-            sent_end = a_end + ntok(tok, "<start_of_turn>user\n" + msgs[2]["content"].split("\n\n")[0])
+            sentence = msgs[2]["content"].split("\n\n")[0]; cut = full.rindex(sentence) + len(sentence)   # end of the re-ask sentence, in characters
+            offs = tok(full, add_special_tokens=False, return_offsets_mapping=True)["offset_mapping"]
+            sent_end = sum(1 for (st, _) in offs if st < cut)                                          # header tokens + sentence tokens
             spans = {"question": (1, q_end), "own_answer": (q_end, a_end), "reask": (a_end, sent_end)}  # skip BOS at 0
             with torch.no_grad():
                 o = model(ids, output_hidden_states=True, output_attentions=True)
