@@ -1,0 +1,46 @@
+# Interpretability results: Gemma 2 9B IT, E0 to E2
+
+Run 2026-11-22. One model, one real-question set (MedQA and CommonsenseQA, 453 items). All numbers are exploratory. Plan: [`docs/interp_plan.md`](interp_plan.md). Raw numbers: `results/interp/`. Scripts: `scripts/interp/`.
+
+## Setup
+- Gemma 2 9B IT, local, bf16, eager attention, one A100 80 GB. The run took about 2 minutes.
+- The prompts are rebuilt from the scenario files and the same chat as the API run: turn 1 question, the model's own turn-1 answer, then the re-ask. We compare the **neutral** re-ask with the **look_again** re-ask. They differ by one sentence.
+- Answer forcing: we start the model's reply with `choice_` and read the probabilities of the letters a to e. The "forced answer" is the most likely letter.
+- "Kept" and "broken" are defined on the 100 own-right items by the **local forced answer** under look_again. This gives 73 kept and 27 broken.
+
+## E0 gate: passed, with a caveat
+| | neutral | look_again | API run (sampled text) |
+| --- | --- | --- | --- |
+| Own-right items turned wrong (n=100) | 0.02 | **0.27** (95% CI 0.18 to 0.36) | 0.07 and 0.51 |
+| Own-wrong items turned right (n=353) | 0.06 | **0.35** | 0.07 and 0.38 |
+
+- The pattern reproduces: look_again breaks far more right answers than neutral does.
+- Forced answers break fewer right answers than sampled text (0.27 against 0.51). Forcing the first tokens changes the behavior. Local and API final answers agree on right or wrong for 83% of items.
+
+## E2: where attention goes
+Attention from the last position to the model's own turn-1 answer, per head.
+
+- **Under look_again, heads in layers 24 to 36 attend much less to the model's own answer on items that get broken.** Example: L30H09 gives 0.055 on broken items and 0.176 on kept items. The 12 strongest heads all have |t| above 5 (uncorrected, permutation p about 0.002, ranking only).
+- **The same heads lose attention when we switch from neutral to look_again.** Example: L31H15 goes from 0.415 to 0.168.
+- **The score generalizes to held-out items.** We pick the top 8 heads on half of the own-right items and score the other half, over 200 random splits. The AUC for telling broken from kept is **0.92** (5th to 95th percentile 0.86 to 0.97). The same heads are chosen again and again (L30H9 in 192 of 200 splits, L34H14 in 183, L31H15 in 158).
+- **The drop in attention (look_again minus neutral) is a weaker predictor**: held-out AUC 0.78. Under neutral alone, the same heads give an AUC of 0.64.
+- **The same drop goes with recovery on wrong items.** On own-wrong items, the drop is larger when the answer gets fixed (-0.214 against -0.149). This is the combined picture: "look again" loosens the hold on the model's own answer. That helps on wrong answers and hurts on right ones.
+- Some heads in layers 14 to 22 (L19H05, L22H11, L14H01) attend more to the re-ask sentence under look_again.
+
+## E1-lite and the direction check (weak evidence)
+- A linear probe on the last-position residual predicts broken versus kept with a cross-validated AUC of 0.88 to 0.89 at layers 30 to 39 under look_again, and about 0.7 under neutral.
+- **This is close to circular.** The last-position residual in late layers is what produces the answer. We do not read it as evidence of a separate "doubt" signal.
+- The direction check (mean look_again minus neutral) shows larger projections on broken items at layers 24 to 39. It is the base for E4, and no steering has run.
+
+## What these results do not show
+- **They are correlations.** Attention mass is not a cause. E3 (patching) is the causal test, and it has not run.
+- **One model and one question set.** Llama and Mistral (anchoring) have not run.
+- **Own-right sample is 100 items,** with 27 broken. The head selection used 2 passes over the same items; the held-out split reduces, but does not remove, that risk.
+- The forced-answer metric is not the same as sampled text.
+- The own-right group is a random sample of up to 100, so confidence intervals are wide.
+- Hidden states are stored in float16. We found no overflow.
+
+## Next
+1. E3: patch the output of the top heads from the neutral run into the look_again run (on the broken items) and see if the right answer returns. Compare with random heads of the same count.
+2. Repeat E0 to E2 for Llama 3.1 8B (anchoring) and Mistral 7B.
+3. Try a second wording ("review").
