@@ -1,0 +1,32 @@
+items: own-right test 50 (broken 15, kept 35); own-wrong 100
+baselines  forced-right rate: broken-group neutral 0.93, look_again 0.00 | kept-group neutral 0.97, look_again 1.00 | own-wrong neutral 0.09, look_again 0.45
+
+== BROKEN items: look_again <- neutral heads (does the right answer come back?) n=15
+  top8                         forced-right 0.00 [0.00,0.00]   mean change in P(right) -0.01 [-0.03,+0.01]
+  top16                        forced-right 0.40 [0.13,0.67]   mean change in P(right) +0.26 [+0.12,+0.41]
+  all_24_36                    forced-right 0.87 [0.67,1.00]   mean change in P(right) +0.74 [+0.59,+0.87]
+  rand8_layers (10 draws)      forced-right mean 0.05, range 0.00-0.40   mean change in P(right) +0.03, range -0.03 to +0.22
+  rand8_any (10 draws)         forced-right mean 0.01, range 0.00-0.07   mean change in P(right) +0.01, range -0.03 to +0.07
+  top8 is above 0 of 10 random layer-matched sets in forced-right rate
+
+== KEPT items: same patch (damage check; should stay right) n=35
+  top8                         forced-right 1.00 [1.00,1.00]   mean change in P(right) -0.00 [-0.02,+0.00]
+  top16                        forced-right 1.00 [1.00,1.00]   mean change in P(right) +0.05 [+0.02,+0.08]
+  all_24_36                    forced-right 0.97 [0.91,1.00]   mean change in P(right) +0.07 [+0.01,+0.12]
+  rand8_layers (10 draws)      forced-right mean 0.99, range 0.89-1.00   mean change in P(right) +0.00, range -0.05 to +0.05
+  rand8_any (10 draws)         forced-right mean 0.99, range 0.94-1.00   mean change in P(right) -0.00, range -0.04 to +0.03
+  top8 is above 2 of 10 random layer-matched sets in forced-right rate
+
+== OWN-WRONG items: same patch (does it remove real recoveries?) n=100
+  top8                         forced-right 0.46 [0.37,0.56]   mean change in P(right) -0.00 [-0.01,+0.01]
+  top16                        forced-right 0.27 [0.18,0.36]   mean change in P(right) -0.15 [-0.20,-0.11]
+  all_24_36                    forced-right 0.09 [0.04,0.15]   mean change in P(right) -0.34 [-0.43,-0.26]
+  rand8_layers (10 draws)      forced-right mean 0.45, range 0.37-0.50   mean change in P(right) -0.01, range -0.07 to +0.03
+  rand8_any (10 draws)         forced-right mean 0.45, range 0.43-0.47   mean change in P(right) -0.00, range -0.03 to +0.02
+  top8 is above 6 of 10 random layer-matched sets in forced-right rate
+
+== INDUCED BREAKS: neutral <- look_again heads, own-right test items (neutral baseline break rate 0.04)
+  top8                         break rate 0.06 [0.00,0.14]
+  top16                        break rate 0.06 [0.00,0.12]
+  all_24_36                    break rate 0.24 [0.12,0.36]
+  rand8_layers_0               break rate 0.04
