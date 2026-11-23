@@ -30,7 +30,7 @@ Most results come from generated scenarios. The last two bullets also use 1,200 
 - **Noise is large.** If we only change the order of the options, 6% to 14% of answers change in the 9B models.
 - **Changes happen near the boundary.** For the Nimble model, answers flip more when the two options are almost equal.
 - **Pressure works, but so does naming an option.** Naming an option with no stated wish also moves the answer.
-- **A planted wrong answer is easy to fix.** Capable models fix it 98% to 99% of the time.
+- **A planted wrong answer is easy to fix for most models.** Haiku 5.5 and Gemma 4 31B fix it 98% to 100% of the time. GPT-5.4 Mini fixes 73% to 94%, depending on the wording.
 - **A model's own wrong answer is harder to fix.** It depends on the model.
   - Weaker models (Llama 3.1 8B, Mistral 7B) stay anchored. A fresh try in a new chat fixes more than a re-ask in the same chat.
   - Two strong models (Haiku 5.5, GPT-5.4 Mini) fix more with "look again" than with a fresh try. They also break some right answers, so accuracy goes down a little. A third (Gemma 4 31B) shows no gain and breaks almost nothing.
