@@ -49,7 +49,7 @@ What this says:
 - **The heads with the clearest attention pattern in E2 are markers, not the cause.** Patching them alone restores 0 of 15 answers. High attention to the own answer does not mean the head's output decides the answer.
 - **The effect is spread over late layers.** Patching every head in layers 24 to 36 restores 87% of broken answers. The top 16 heads restore 40%, well above random sets (5%). Eight heads alone do nothing, so the top 16 work together or the ranks 9 to 16 matter. We did not test them one by one.
 - **The same components carry the useful and the harmful change.** The patch that undoes the breaks also removes real recoveries (0.45 to 0.09 for all heads, 0.45 to 0.27 for the top 16). This matches the Ma et al. warning that "do not yield" and "update when wrong" share components. We have no head set that keeps the fixes and removes the breaks.
-- **Late-layer head outputs are not the whole story.** Swapping them into the neutral run causes breaks in 24% of right answers, not 27%+. Earlier layers and earlier positions also matter. We patched the last position only.
+- **Late-layer head outputs are not the whole story.** Swapping them into the neutral run causes breaks in 24% of right answers. The full look_again run breaks 27% (E0), so this swap gives most but not all of the effect. Earlier layers and earlier positions may also matter. We patched the last position only.
 
 ## What these results do not show
 - **E2 and E1-lite are correlations.** E3 is causal only for the last-position head outputs we patched. It has 15 broken items, so the intervals are wide.
