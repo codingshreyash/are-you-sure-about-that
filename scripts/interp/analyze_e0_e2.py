@@ -21,7 +21,7 @@ L = "abcde"
 right = np.array([str(c)[-1] for c in d["right_code"]]); own = np.array([str(c)[-1] for c in d["own_code"]])
 ownc = d["own_correct"].astype(bool)
 top = {w: np.array([L[i] for i in d[f"probs_{w}"].argmax(1)]) for w in ("neutral", "look_again")}
-ok = {w: top[w] == right for w in top}
+ok = {w: (d[f"gen_ok_{w}"] if f"gen_ok_{w}" in d.files else top[w] == right) for w in top}   # generated-answer outcomes when the file has them
 api = {w: d[f"api_outcome_{w}"] for w in top}
 
 def boot(x, n=2000):

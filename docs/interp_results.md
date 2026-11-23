@@ -73,6 +73,34 @@ What the numbers show, for the record, with that caveat (own-wrong items: still 
 
 Files: `results/interp/llama_e0_e2_ownright_summary.txt`, `results/interp/llama_e0_e2_ownwrong_summary.txt`, `data/interp/llama31_8b_pairs.jsonl`.
 
+## Generation-based check (valid metric), Gemma 2 9B, Llama 3.1 8B, Mistral 7B
+Run 2026-11-23. We generate the model's real re-ask reply locally (greedy, up to 320 tokens), parse the final code, then read the model state at the position where it writes the code (teacher-forced prefix up to `choice_`). Labels come from the generated code. Items: all own-right items plus 200 random own-wrong items (Gemma 300 items, Llama 279, Mistral 281; replies without a code are dropped). Script: `scripts/interp/gen_extract.py`. Numbers: `results/interp/*_gen_*`. Llama uses the open copy of the weights (see above).
+
+**E0 (local generated vs API run)**
+| Model | Own-right turned wrong, look_again (local / API) | Own-wrong turned right, look_again (local / API) | Agree on right/wrong |
+| --- | --- | --- | --- |
+| Gemma 2 9B | **0.58** / 0.51 | 0.38 / 0.40 | 0.83 |
+| Mistral 7B | 0.15 / 0.21 | 0.15 / 0.16 | 0.85 |
+| Llama 3.1 8B | 0.45 / **0.11** | 0.56 / **0.18** | 0.66 |
+- Gemma and Mistral match the API behavior. The earlier forced-answer number for Gemma (0.27) understated the breaks. The patching run (E3) used the forced metric and has **not** been repeated with generation.
+- **Llama does not match.** The local greedy Llama flips (breaks 45%, fixes 56%) like Gemma. The API Llama anchors. We do not know why. Candidates: greedy decoding against API sampling, differences in how the hub serves the model, the chat template, or the open copy of the weights. **Any statement about Llama here is about our local copy, not the hub model.**
+- Mistral has only 14 own-right items that break, so its own-right comparisons are uninformative.
+
+**E2 with generation (own-right items: broken vs kept, attention at the decision position to the model's own turn-1 answer)**
+- **Gemma 2 9B.** The same heads as before (L34H14, L36H06, L31H07, L32H05, L34H06, L24H10) appear. Held-out AUC (heads chosen on half the items, scored on the other half, 200 splits) is **0.99** (5th to 95th percentile 0.97 to 1.00). The forced-answer run gave 0.92. Attention of the top 8 heads to the own answer: 0.20 on kept items, 0.04 on broken items. Attention to the model's new reply rises only from 0.03 to 0.05, so the attention does not just move to the new text.
+- **Llama 3.1 8B (local copy).** Held-out AUC **1.00** (5th to 95th percentile 0.99 to 1.00) with the same kind of head signature (own answer 0.18 kept, 0.03 broken).
+- **Mistral 7B.** Held-out AUC 0.82 (0.60 to 0.96), n = 14 broken, so uninformative.
+- The attention to the own answer in late layers falls under look_again in all three models (Gemma 0.090 to 0.058, Mistral 0.079 to 0.055, Llama 0.046 to 0.034).
+
+**Anchoring (own-wrong items: stuck vs fixed)**
+- The same measure separates stuck from fixed answers much more weakly: held-out AUC 0.63 (Gemma), 0.71 (Llama), 0.63 (Mistral). The heads chosen differ from the flip heads and vary across splits. Probe AUC at late layers: 0.71 to 0.78 for Gemma and Llama.
+- So an answer breaks when the late heads stop reading the old answer. An answer stays wrong for reasons we cannot see with this attention measure.
+
+**What we can say**
+- In Gemma 2 9B and in our local Llama copy, whether "look again" breaks a right answer is tied to a small set of late-layer heads that stop reading the model's own earlier answer. This is a marker. The patching run with the forced metric showed that those 8 heads alone do not restore the answer, and that the effect is spread over layers 24 to 36.
+- **We cannot say** that anchoring (weak models staying wrong) uses the same heads. The attention measure does not separate stuck from fixed answers well.
+- The hub Llama and our local Llama behave differently. That limits every Llama statement.
+
 ## What these results do not show
 - **E2 and E1-lite are correlations.** E3 is causal only for the last-position head outputs we patched. It has 15 broken items, so the intervals are wide.
 - **One model and one question set.** Llama and Mistral (anchoring) have not run.
@@ -83,5 +111,5 @@ Files: `results/interp/llama_e0_e2_ownright_summary.txt`, `results/interp/llama_
 
 ## Next
 1. Find which layers and which positions matter: patch by layer block, and patch the re-ask span, not only the last position.
-2. Redo Llama 3.1 8B and Mistral 7B with a metric from real generated answers (see the Llama section), then run E3 on them.
+2. Repeat E3 (patching) with the generation metric. Find out why local Llama differs from the hub Llama (sampling, template, weights).
 3. Try a second wording ("review").

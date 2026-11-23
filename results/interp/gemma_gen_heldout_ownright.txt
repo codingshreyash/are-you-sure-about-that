@@ -1,0 +1,3 @@
+splits used 200; held-out AUC, look_again attention of top-8 heads (lower=broken): mean 0.99, 5-95% 0.97-1.00
+held-out AUC, drop (look_again - neutral) of the same heads: mean 0.95
+heads chosen most often: L34H14(198), L36H6(190), L31H7(181), L32H5(161), L34H6(135), L30H8(121), L24H10(113), L28H10(92), L30H9(69), L31H15(51)
