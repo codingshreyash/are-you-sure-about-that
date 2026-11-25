@@ -17,12 +17,19 @@ def auc(score, y):
     r = rankdata(score); return (r[y == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("existing"); ap.add_argument("gating")
+    ap = argparse.ArgumentParser(); ap.add_argument("existing", help="hub own-error file, or - for a local run"); ap.add_argument("gating", help="hub gating file, or the local file from scripts/interp/gating_local.py")
     ap.add_argument("--scen-dir", default="data/scenarios/realworld"); ap.add_argument("--pools", default="medqa=medqa.jsonl,csqa=csqa.jsonl")
     a = ap.parse_args()
     S = {s["_key"]: s for s in R.build_pool(a.scen_dir, files=[tuple(x.split("=", 1)) for x in a.pools.split(",")])}
-    old = [json.loads(l) for l in open(a.existing) if l.strip()]; new = [json.loads(l) for l in open(a.gating) if l.strip()]
+    new = [json.loads(l) for l in open(a.gating) if l.strip()]
+    local = bool(new) and "a1" in new[0]                      # local format: one row per item with a1, a2, a3, la
+    old = [] if local else [json.loads(l) for l in open(a.existing) if l.strip()]
     ans = collections.defaultdict(dict)
+    if local:
+        for r in new:
+            for x in ("a1", "a2", "a3", "la"):
+                if r.get(x): ans[r["key"]][x] = "choice_" + r[x]
+        new = []
     for r in old:
         if r.get("choice") is None: continue
         if r["phase"] == "turn1": ans[r["key"]]["a1"] = r["choice"]
@@ -35,6 +42,7 @@ def main():
     dropped = len([k for k, d in ans.items() if k in S]) - len(keys)
     if not keys: sys.exit(f"no item has all of a1, a2, a3 and a look_again re-ask (dropped {dropped})")
     exp = {k: S[k]["expected"]["base"] for k in keys}
+    model_name = (json.loads(open(a.gating).readline())["model"] if local else old[0]["model"])
     c = lambda k, x: float(ans[k][x] == exp[k])
     a1 = np.array([c(k, "a1") for k in keys]); la = np.array([c(k, "la") for k in keys])
     unsure = np.array([not (ans[k]["a1"] == ans[k]["a2"] == ans[k]["a3"]) for k in keys])
@@ -45,7 +53,7 @@ def main():
     pol = {"never": a1, "always_LA": la, "gated_LA": np.where(unsure, la, a1), "vote3": v3, "oracle_LA": np.where(a1 == 0, la, a1)}
     rng = np.random.default_rng(1684); n = len(keys); idxs = [rng.integers(0, n, n) for _ in range(2000)]
     def ci(x): m = [x[i].mean() for i in idxs]; return x.mean(), np.percentile(m, 2.5), np.percentile(m, 97.5)
-    print(f"model {old[0]['model']}: items used {n} (dropped for missing/unparsed answers: {dropped}); own accuracy a1 {a1.mean():.3f}")
+    print(f"model {model_name}: items used {n} (dropped for missing/unparsed answers: {dropped}); own accuracy a1 {a1.mean():.3f}")
     print(f"unsure share {unsure.mean():.3f} ({unsure.sum()} items); P(a1 wrong | unsure) {1 - a1[unsure].mean() if unsure.any() else float('nan'):.3f}; "
           f"P(a1 wrong | sure) {1 - a1[~unsure].mean():.3f}; AUC of unsure for a1 wrong {auc(unsure.astype(float), 1 - a1):.2f}")
     print(f"{'policy':10s} accuracy [95% CI]")
